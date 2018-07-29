@@ -13,7 +13,7 @@ from selenium.webdriver.chrome.options import Options
 def scraper(self):
 	chrome_options = Options()
 	chrome_options.add_argument("--headless")
-	chrome_driver = '/c/webdrivers/chromedriver.exe'
+	chrome_driver = '/mnt/c/webdrivers/chromedriver.exe'
 	driver = webdriver.Chrome(chrome_options=chrome_options, executable_path=chrome_driver)
 	page = ''
 	trip_advisor_url = 'https://www.tripadvisor.com/Attraction_Review-g28970-d3161320-Reviews-Washington_DC_Urban_Adventures-Washington_DC_District_of_Columbia.html'
