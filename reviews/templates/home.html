@@ -1,0 +1,67 @@
+{% load crispy_forms_tags %}
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UA Review Finder</title>
+  <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
+
+  {% load staticfiles %}
+
+  <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap.min.css' %}" type = "text/css"/> 
+
+</head>
+<body>
+  <script src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+
+<div class='row'>
+<div class='col-lg-8 col-sm-10 col-xs-12'>
+<h3 id="homeContact">{{ title }}</h3>
+
+{% if confirm_message %}
+<p>{{ confirm_message }}</p>
+{% endif %}
+
+{% if form %}
+<form method='POST' action=''> {% csrf_token %}
+{{ form|crispy }}
+<br>
+<input type="submit" value="submit form" class="btn btn-default"/>
+</form>
+{% endif %}
+</div>
+</div>
+
+{% if total %}
+<br>
+<p>{{ total }}</p>
+<br>
+{% endif %}
+
+{% if data_list %}
+<div class="row">
+    <div class="col-sm-4">
+		<table class="table table-bordered">
+		    <thead>
+		      	<tr>
+		        	<th>Tour</th>
+		        	<th>Date of Review</th>
+		        	<th>Trip Advisor or Viator</th>
+		      	</tr>
+		    </thead>
+		    <tbody>
+		    {% for i in data_list %}
+		      	<tr>
+		        	<td>{{ i.tour }}</td>
+		        	<td>{{ i.date }} - {{ i.user }}</td>
+		        	<td>{{ i.link }}</td>
+		      	</tr>
+		    {% endfor %}
+		    </tbody>
+		</table>
+	</div>
+</div>
+{% endif %}
+
+</body>
+</html>
