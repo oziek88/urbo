@@ -46,15 +46,17 @@
 		      	<tr>
 		        	<th>Tour</th>
 		        	<th>Date of Review</th>
-		        	<th>Trip Advisor or Viator</th>
+					<th>Trip Advisor, Yelp, UAL, Viator</th>
+					<th>Reviewer User Name</th>
 		      	</tr>
 		    </thead>
 		    <tbody>
 		    {% for i in data_list %}
 		      	<tr>
 		        	<td>{{ i.tour }}</td>
-		        	<td>{{ i.date }} - {{ i.user }}</td>
-		        	<td>{{ i.link }}</td>
+		        	<td>{{ i.date }}</td>
+					<td>{{ i.link }}</td>
+					<td>{{ i.user }}</td>
 		      	</tr>
 		    {% endfor %}
 		    </tbody>
