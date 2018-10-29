@@ -43,7 +43,7 @@ def scrape_sites(city):
 		},
 		"washington_dc": {
 			"tripadvisor": 'https://www.tripadvisor.com/Attraction_Review-g28970-d3161320-Reviews-Washington_DC_Urban_Adventures-Washington_DC_District_of_Columbia.html',
-			"viator": 'https://www.viator.com/tours/Washington-DC/Capitol-Hill-and-DC-Monuments-Tour-by-Electric-Cart/d657-5713UNVEILED?subPageType=TR&reviewSortBy=-PUBLISHED_TIMESTAMP+D-',
+			"viator": ['https://www.viator.com/tours/Washington-DC/Capitol-Hill-and-DC-Monuments-Tour-by-Electric-Cart/d657-5713UNVEILED?subPageType=TR', 'https://www.viator.com/tours/Washington-DC/Washington-DC-Monuments-by-Moonlight-Electric-Cart-Tour/d657-5713UASEA12?subPageType=TR', 'https://www.viator.com/tours/Washington-DC/Politics-and-Pints-Small-Group-Capitol-Hill-Tour-with-Local-Guide/d657-5713P55?subPageType=TR', 'https://www.viator.com/tours/Washington-DC/Sample-Tastes-of-H-Street-Walking-Tour-With-Craft-Beer-Tasting/d657-5713P68?subPageType=TR', 'https://www.viator.com/tours/Washington-DC/Museum-of-American-History-Through-Music-Small-Group-Tour/d657-5713P75', 'https://www.viator.com/tours/Washington-DC/Smithsonian-American-Art-Small-Group-Adventure/d657-5713P79', 'https://www.viator.com/tours/Washington-DC/DC-Craft-Cocktail-Evening-Tour/d657-5713P74/important-info', 'https://www.viator.com/tours/Washington-DC/Total-DC-Tour-DC-Unveiled-and-Music-History/d657-5713P80', 'https://www.viator.com/tours/Washington-DC/Total-DC-Evening-Tour-Art-and-Cocktails/d657-5713P78', 'https://www.viator.com/tours/Washington-DC/Total-DC-Evening-Tour-American-Art-and-Monuments-by-Night/d657-5713P77'],
 			"city": 'Washington DC'
 		}
 	}
@@ -60,71 +60,82 @@ def scrape_sites(city):
 			trip_advisor_url = urls[str(city)]["tripadvisor"]
 			print("Contains Tripadvisor URL")
 		if "viator" in urls[str(city)]:
-			viator_url = urls[str(city)]["viator"]
+			viator_urls = urls[str(city)]["viator"]
 			print("Contains Viator URL")
 
 	### Scrape Viator ###
-	if viator_url != None:
+	if viator_urls != None:
 		print("Initiating Viator Scrape")
-
-		driver.get(viator_url)
-		time.sleep(randint(4, 7))
-		html = driver.page_source
-		soup = BeautifulSoup(html, "html.parser")
-		
-		term = soup.find("div", {"class": "reviews-page-count"}).text
-		last_page = term.replace("1 / ","")
-
-		tour = soup.find("h1").text
-
-		i = 0
-		while i < int(last_page):
-			time.sleep(randint(3, 5))
-			try:
-				elem = driver.find_elements_by_xpath("//a[contains(@class,'review-more pseudo-link') and not(contains(@class,'d-none'))]")
-				for x in range(0,len(elem)):
-					elem[x].click()
-					time.sleep(randint(1, 3))
-				print("'MORE' CLICKED")
-			except:
-				print("'MORE' NOT CLICKED")
-			
-			time.sleep(randint(2, 4))
+		for viator_url in viator_urls:
+			driver.get(viator_url)
+			time.sleep(randint(5, 7))
 			html = driver.page_source
+			time.sleep(randint(2, 4))
 			soup = BeautifulSoup(html, "html.parser")
 
-			data = soup.find_all("div", {"itemprop": "review"})
-			for item in data:
-				## Store to database ##
-				head = item.find("div", {"class": "d-flex flex-row"})
-				head_items = head.find_all("span", {"class": "small"})
-				d = head_items[1].text.replace(',' + u'\xa0', "")
-				temp_date_m = datetime.strptime(d, '%b %Y').strftime("%Y%m")
-				comment_div = item.find("div", {"class": "row mt-1"})
-
-				date_of_review = int(temp_date_m + "00")
-				source = "Viator"
-				reviewer_name = head_items[0].text
-				rating = int(item.find("meta", {"itemprop": "ratingValue"}).get("content"))
-				description = comment_div.find("p").text
-				
-				new_review = Reviews(city=current_city, tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating, description=description, guide='')
-				if len(Reviews.objects.filter(tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating)) == 0:
-					new_review.save()
-					print("SAVED")
-				else:
-					print("DONT SAVE")
-					i = int(last_page) + 1
-					break
-				#######################
-			time.sleep(randint(2, 4))
+			tour = soup.find("h1").text
+			print(tour)
+			
 			try:
-				next_page = driver.find_element_by_xpath("//a[contains(@class,'reviews-load-more')]")
-				next_page.click()
-				i += 1
+				term = soup.find("div", {"class": "reviews-page-count"}).text
+				last_page = term.replace("1 / ","")
 			except:
-				print("LAST PAGE")
-				i = int(last_page) + 1
+				last_page = "1"
+				print("Only One Page")
+
+			i = 0
+			while i < int(last_page):
+				time.sleep(randint(3, 5))
+				try:
+					elem = driver.find_elements_by_xpath("//a[contains(@class,'review-more pseudo-link') and not(contains(@class,'d-none'))]")
+					for x in range(0,len(elem)):
+						elem[x].click()
+						time.sleep(randint(1, 3))
+					print("'MORE' CLICKED")
+				except:
+					print("'MORE' NOT CLICKED")
+				
+				time.sleep(randint(2, 4))
+				html = driver.page_source
+				soup = BeautifulSoup(html, "html.parser")
+				data = None
+				try:
+					data = soup.find_all("div", {"itemprop": "review"})
+				except:
+					print("NO REVIEWS")
+					break
+				for item in data:
+					## Store to database ##
+					head = item.find("div", {"class": "d-flex flex-row"})
+					head_items = head.find_all("span", {"class": "small"})
+					d = head_items[1].text.replace(',' + u'\xa0', "")
+					temp_date_m = datetime.strptime(d, '%b %Y').strftime("%Y%m")
+					comment_div = item.find("div", {"class": "row mt-1"})
+
+					date_of_review = int(temp_date_m + "00")
+					source = "Viator"
+					reviewer_name = head_items[0].text
+					rating = int(item.find("meta", {"itemprop": "ratingValue"}).get("content"))
+					description = comment_div.find("p").text
+					
+					new_review = Reviews(city=current_city, tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating, description=description, guide='')
+					if len(Reviews.objects.filter(tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating)) == 0:
+						new_review.save()
+						print("SAVED")
+					else:
+						print("DONT SAVE")
+						i = int(last_page) + 1
+						break
+					#######################
+				time.sleep(randint(2, 4))
+				try:
+					next_page = driver.find_element_by_xpath("//a[contains(@class,'reviews-load-more')]")
+					next_page.click()
+					i += 1
+				except:
+					print("LAST PAGE")
+					i = int(last_page) + 1
+			print("COMPLETED " + tour)
 		print("Viator Scrape Completed")
 	else:
 		print("No URL for Viator")
@@ -222,8 +233,8 @@ def scraper(request):
 
 		for review in reviews:
 			if re.search(name, review.description, re.IGNORECASE):
-				r = Reviews.objects.get(reviewer_name=review.reviewer_name, date_of_review=review.date_of_review)
-				r.guide = name
+				r = Reviews.objects.get(tour=review.tour, reviewer_name=review.reviewer_name, date_of_review=review.date_of_review)
+				r.guide = name.lower()
 				r.save()
 
 				printed_date = None
