@@ -1,4 +1,5 @@
 from django.shortcuts import render
+import json
 import requests
 import re
 import time
@@ -18,6 +19,58 @@ from selenium.webdriver.support import expected_conditions as EC
 from .models import Reviews
 
 from .forms import findMyReviewsForm
+
+def review_description(request):
+	if request.method == 'POST':
+		for id in request.POST:
+			description = Reviews.objects.get(id=id).description
+			json_return = json.dumps({"description" : description})
+			return HttpResponse(json_return, content_type ="application/json")
+
+def review_results(request):
+		if request.method == 'POST':
+			form = findMyReviewsForm(request.POST or None)
+			data_list = []
+			if form.is_valid():
+				name = form.cleaned_data['name']
+				city = form.cleaned_data['city']
+				first_date = int(form.cleaned_data['From'].strftime("%Y%m%d"))
+				last_date = int(form.cleaned_data['To'].strftime("%Y%m%d"))
+				first_date_printed = form.cleaned_data['From'].strftime("%B %d, %Y")
+				last_date_printed = form.cleaned_data['To'].strftime("%B %d, %Y")
+				# for viator dates
+				first_date_m = int(form.cleaned_data['From'].strftime("%Y%m" + "00"))
+				last_date_m = int(form.cleaned_data['To'].strftime("%Y%m" + "00"))
+
+				tripadvisor_reviews = Reviews.objects.filter(city=city, source="Trip Advisor", date_of_review__gte=first_date, date_of_review__lte=last_date)
+				viator_reviews = Reviews.objects.filter(city=city, source="Viator", date_of_review__gte=first_date_m, date_of_review__lte=last_date_m)
+
+				reviews = list(chain(tripadvisor_reviews, viator_reviews))
+
+				for review in reviews:
+					if re.search(name, review.description, re.IGNORECASE):
+						r = Reviews.objects.get(tour=review.tour, reviewer_name=review.reviewer_name, date_of_review=review.date_of_review)
+						r.guide = name.lower()
+						r.save()
+
+						printed_date = None
+						try:
+							printed_date = datetime.strptime(str(review.date_of_review), '%Y%m%d').strftime("%B %d, %Y")
+						except:
+							printed_date = datetime.strptime(str(review.date_of_review), '%Y%m00').strftime("%B, %Y")
+
+						if review.rating == 5:
+							entry = {}
+							entry['link'] = review.source
+							entry['user'] = review.reviewer_name
+							entry['date'] = printed_date
+							entry['tour'] = review.tour
+							entry['id'] = review.id
+							data_list.append(entry)
+				json_return = json.dumps({"reviews" : data_list})
+				return HttpResponse(json_return, content_type ="application/json")
+			else:
+				return HttpResponse('failed')  
 
 def scrape_sites(city):
 	PROXY = "200.207.220.26:8888" # IP:PORT or HOST:PORT
@@ -206,51 +259,10 @@ def scrape_sites(city):
 				i += 1
 		print("Tripadvisor Scrape Completed")
 	else:
-		print("No URL for Tripadvisor")	
-
+		print("No URL for Tripadvisor")
 
 def scraper(request):
 	form = findMyReviewsForm(request.POST or None)
-	confirm_message = None
-	data_list = []
-	total = None
-
-	if form.is_valid():
-		city = form.cleaned_data['city']
-		name = form.cleaned_data['name']
-		first_date = int(form.cleaned_data['From'].strftime("%Y%m%d"))
-		last_date = int(form.cleaned_data['To'].strftime("%Y%m%d"))
-		first_date_printed = form.cleaned_data['From'].strftime("%B %d, %Y")
-		last_date_printed = form.cleaned_data['To'].strftime("%B %d, %Y")
-		# for viator dates
-		first_date_m = int(form.cleaned_data['From'].strftime("%Y%m" + "00"))
-		last_date_m = int(form.cleaned_data['To'].strftime("%Y%m" + "00"))
-
-		tripadvisor_reviews = Reviews.objects.filter(city=city, source="Trip Advisor", date_of_review__gte=first_date, date_of_review__lte=last_date, rating=5)
-		viator_reviews = Reviews.objects.filter(city=city, source="Viator", date_of_review__gte=first_date_m, date_of_review__lte=last_date_m, rating=5)
-
-		reviews = list(chain(tripadvisor_reviews, viator_reviews))
-
-		for review in reviews:
-			if re.search(name, review.description, re.IGNORECASE):
-				r = Reviews.objects.get(tour=review.tour, reviewer_name=review.reviewer_name, date_of_review=review.date_of_review)
-				r.guide = name.lower()
-				r.save()
-
-				printed_date = None
-				try:
-					printed_date = datetime.strptime(str(review.date_of_review), '%Y%m%d').strftime("%B %d, %Y")
-				except:
-					printed_date = datetime.strptime(str(review.date_of_review), '%Y%m00').strftime("%B, %Y")
-
-				entry = {}
-				entry['link'] = review.source
-				entry['user'] = review.reviewer_name
-				entry['date'] = printed_date
-				entry['tour'] = review.tour
-				data_list.append(entry)		
-
-		total = "Holy cow, " + name + "! You have " + str(len(data_list)) + " FIVE STAR REVIEWS between " + first_date_printed + " and " + last_date_printed + "!  Reviews from Viator don't use exact dates, only month and year."
-	context = {'title': 'Search for Reviews', 'form': form, 'confirm_message': confirm_message, 'total': total, 'data_list': data_list, }
+	context = {'title': 'Search for Reviews', 'form': form, }
 	template = 'home.html'
 	return render(request,template,context)

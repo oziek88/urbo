@@ -1,0 +1,75 @@
+.fades {
+    width: 102%;
+    height: 1000px;
+    display: none;
+    position: fixed;
+}
+.UA-img {
+    width: 102%;
+    height: 400px;
+    z-index:1;
+}
+
+.reviews-form-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* align-items: center; */
+    /* text-align: center; */
+}
+.reviews-form {
+    top: 200px;
+    width:400px;
+    padding: 0px 10px 10px 20px;
+    display: none;
+    background-color:#fff;
+    border-radius: 10px;
+    border: 2px solid rgba(102, 217, 255, 0.9);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+    margin:0 auto;
+}
+
+.reviews-form h3 {
+    text-align:center;
+}
+
+.pad{
+    margin:2px;
+    padding:5px;
+}
+
+.submit{
+    margin-top:5px;
+}
+
+.results-table{
+    margin: 0px 10px 10px 20px;
+}
+.inner-table{
+    display:none;
+}
+
+tr {background-color: #ffffff;}
+tr:hover {background-color: #f5f5f5;}
+
+body{
+    background-image: url("ua-collage.png");
+    background-repeat: repeat;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+table, th, td {
+    border: 1px solid black;
+}
+
+#description-box {
+    display:none;
+    padding-top: 5px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    border: 2px solid rgba(102, 217, 255, 0.9);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+}

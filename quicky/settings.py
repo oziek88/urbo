@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'bs4',
     'selenium',
     'crispy_forms',
-    'reviews'
+    'reviews',
+    'django_tables2'
 ]
 
 MIDDLEWARE = [

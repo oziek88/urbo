@@ -9,61 +9,72 @@
   {% load staticfiles %}
 
   <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap.min.css' %}" type = "text/css"/> 
+  <link rel="stylesheet" href="{% static 'css/home.css' %}" type = "text/css"/> 
 
 </head>
 <body>
+  <script src="{% static 'jQuery/jquery-3.0.0.min.js' %}"></script>
   <script src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+  <script src="{% static 'js/home.js' %}"></script>
 
-<div class='row'>
-<div class='col-lg-8 col-sm-10 col-xs-12'>
-<h3 id="homeContact">{{ title }}</h3>
+	<div id="page-wrap">
+		<div class='row page-load-pics'>
+			<img class="fades" name="1" src="{% static 'images/Paris.jpg' %}" />
+			<img class="fades" name="2" src="{% static 'images/nyc.jpg' %}" />
+			<img class="fades" name="3" src="{% static 'images/Lima.jpg' %}" />
+			<img class="fades" name="4" src="{% static 'images/Tokyo.jpg' %}" />
+			<img class="fades UA-img" name="UA" src="{% static 'images/UA.jpg' %}" />
+		</div>
 
-{% if confirm_message %}
-<p>{{ confirm_message }}</p>
-{% endif %}
+		<div class='reviews-form-wrapper'>
+			<div class='col-lg-8 col-sm-10 col-xs-12 reviews-form'>
+				<h3 class='form-title'>{{ title }}</h3>
+				{% if confirm_message %}
+				<p>{{ confirm_message }}</p>
+				{% endif %}
+				
+				{% if form %}
+				<form class='form-info form-row' method='POST' action=''> {% csrf_token %}
+					<div class="col-xs-8 pad">
+						{{ form.city|as_crispy_field }}
+					</div>
+					<div class="col-xs-8 pad">
+						{{ form.name|as_crispy_field }}
+					</div>
+					<div class="col-xs-6 pad">
+						{{ form.From|as_crispy_field }}
+					</div>
+					<div class="col-xs-4 pad">
+						{{ form.To|as_crispy_field }}
+					</div>
+					<br>
+					<div class="col-xs-4 pad">
+						<input type="button" value="submit form" class="btn btn-primary submit"/>
+					</div>
+				</form>
+				{% endif %}
+			</div>
+		</div>
 
-{% if form %}
-<form method='POST' action=''> {% csrf_token %}
-{{ form|crispy }}
-<br>
-<input type="submit" value="submit form" class="btn btn-default"/>
-</form>
-{% endif %}
-</div>
-</div>
-
-{% if total %}
-<br>
-<p>{{ total }}</p>
-<br>
-{% endif %}
-
-{% if data_list %}
-<div class="row">
-    <div class="col-sm-4">
-		<table class="table table-bordered">
-		    <thead>
-		      	<tr>
-		        	<th>Tour</th>
-		        	<th>Date of Review</th>
-					<th>Trip Advisor, Yelp, UAL, Viator</th>
-					<th>Reviewer User Name</th>
-		      	</tr>
-		    </thead>
-		    <tbody>
-		    {% for i in data_list %}
-		      	<tr>
-		        	<td>{{ i.tour }}</td>
-		        	<td>{{ i.date }}</td>
-					<td>{{ i.link }}</td>
-					<td>{{ i.user }}</td>
-		      	</tr>
-		    {% endfor %}
-		    </tbody>
-		</table>
+		
+		<br>
+		<div id="total">
+			{% if total %}
+			<p>{{ total }}</p>
+			{% endif %}
+		</div>
+		<br>
+		
+		<div class="results-table">
+			<div class="row">
+				<div id='inner-table' class="col-sm-8">		
+					<!-- results table -->
+				</div>
+				<div id='description-box' class="col-sm-2 description">		
+						<!-- results description -->
+				</div>
+			</div>
+		</div>
 	</div>
-</div>
-{% endif %}
-
 </body>
 </html>
