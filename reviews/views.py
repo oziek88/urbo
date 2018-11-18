@@ -42,38 +42,40 @@ def review_results(request):
 				first_date_m = int(form.cleaned_data['From'].strftime("%Y%m" + "00"))
 				last_date_m = int(form.cleaned_data['To'].strftime("%Y%m" + "00"))
 
-				tripadvisor_reviews = Reviews.objects.filter(city=city, source="Trip Advisor", date_of_review__gte=first_date, date_of_review__lte=last_date)
-				viator_reviews = Reviews.objects.filter(city=city, source="Viator", date_of_review__gte=first_date_m, date_of_review__lte=last_date_m)
+				tripadvisor_reviews = Reviews.objects.filter(city=city, source="Trip Advisor", date_of_review__gte=first_date, date_of_review__lte=last_date).order_by('-date_of_review')
+				viator_reviews = Reviews.objects.filter(city=city, source="Viator", date_of_review__gte=first_date_m, date_of_review__lte=last_date_m).order_by('-date_of_review')
 
 				reviews = list(chain(tripadvisor_reviews, viator_reviews))
 
 				for review in reviews:
-					if re.search(name, review.description, re.IGNORECASE):
-						r = Reviews.objects.get(tour=review.tour, reviewer_name=review.reviewer_name, date_of_review=review.date_of_review)
-						r.guide = name.lower()
-						r.save()
+					names = name.split(", ")
+					for n in names:
+						if re.search(n, review.description, re.IGNORECASE):
+							r = Reviews.objects.get(tour=review.tour, reviewer_name=review.reviewer_name, date_of_review=review.date_of_review)
+							r.guide = names[0].lower()
+							r.save()
 
-						printed_date = None
-						try:
-							printed_date = datetime.strptime(str(review.date_of_review), '%Y%m%d').strftime("%B %d, %Y")
-						except:
-							printed_date = datetime.strptime(str(review.date_of_review), '%Y%m00').strftime("%B, %Y")
+							printed_date = None
+							try:
+								printed_date = datetime.strptime(str(review.date_of_review), '%Y%m%d').strftime("%B %d, %Y")
+							except:
+								printed_date = datetime.strptime(str(review.date_of_review), '%Y%m00').strftime("%B, %Y")
 
-						if review.rating == 5:
-							entry = {}
-							entry['link'] = review.source
-							entry['user'] = review.reviewer_name
-							entry['date'] = printed_date
-							entry['tour'] = review.tour
-							entry['id'] = review.id
-							data_list.append(entry)
+							if review.rating == 5:
+								entry = {}
+								entry['link'] = review.source
+								entry['user'] = review.reviewer_name
+								entry['date'] = printed_date
+								entry['tour'] = review.tour
+								entry['id'] = review.id
+								data_list.append(entry)
 				json_return = json.dumps({"reviews" : data_list})
 				return HttpResponse(json_return, content_type ="application/json")
 			else:
 				return HttpResponse('failed')  
 
 def scrape_sites(city):
-	PROXY = "200.207.220.26:8888" # IP:PORT or HOST:PORT
+	PROXY = "206.189.145.96:8080" # IP:PORT or HOST:PORT
 
 	chrome_options = webdriver.ChromeOptions()
 	chrome_options.add_argument('--proxy-server=%s' % PROXY)
@@ -95,7 +97,7 @@ def scrape_sites(city):
 			"city": 'Barcelona'
 		},
 		"washington_dc": {
-			"tripadvisor": 'https://www.tripadvisor.com/Attraction_Review-g28970-d3161320-Reviews-Washington_DC_Urban_Adventures-Washington_DC_District_of_Columbia.html',
+			"tripadvisor": 'https://www.tripadvisor.co.uk/Attraction_Review-g28970-d3161320-Reviews-Washington_DC_Urban_Adventures-Washington_DC_District_of_Columbia.html',
 			"viator": ['https://www.viator.com/tours/Washington-DC/Capitol-Hill-and-DC-Monuments-Tour-by-Electric-Cart/d657-5713UNVEILED?subPageType=TR', 'https://www.viator.com/tours/Washington-DC/Washington-DC-Monuments-by-Moonlight-Electric-Cart-Tour/d657-5713UASEA12?subPageType=TR', 'https://www.viator.com/tours/Washington-DC/Politics-and-Pints-Small-Group-Capitol-Hill-Tour-with-Local-Guide/d657-5713P55?subPageType=TR', 'https://www.viator.com/tours/Washington-DC/Sample-Tastes-of-H-Street-Walking-Tour-With-Craft-Beer-Tasting/d657-5713P68?subPageType=TR', 'https://www.viator.com/tours/Washington-DC/Museum-of-American-History-Through-Music-Small-Group-Tour/d657-5713P75', 'https://www.viator.com/tours/Washington-DC/Smithsonian-American-Art-Small-Group-Adventure/d657-5713P79', 'https://www.viator.com/tours/Washington-DC/DC-Craft-Cocktail-Evening-Tour/d657-5713P74/important-info', 'https://www.viator.com/tours/Washington-DC/Total-DC-Tour-DC-Unveiled-and-Music-History/d657-5713P80', 'https://www.viator.com/tours/Washington-DC/Total-DC-Evening-Tour-Art-and-Cocktails/d657-5713P78', 'https://www.viator.com/tours/Washington-DC/Total-DC-Evening-Tour-American-Art-and-Monuments-by-Night/d657-5713P77'],
 			"city": 'Washington DC'
 		}
@@ -103,7 +105,8 @@ def scrape_sites(city):
 
 	current_city = None
 	trip_advisor_url = None
-	viator_url = None
+	viator_urls = None
+	new_reviews_saved = 0
 
 	if str(city) in urls:
 		if "city" in urls[str(city)]:
@@ -116,6 +119,74 @@ def scrape_sites(city):
 			viator_urls = urls[str(city)]["viator"]
 			print("Contains Viator URL")
 
+	# Scrape TripAdvisor ##
+	if trip_advisor_url != None:
+		print("Initiating Tripadvisor Scrape")
+
+		driver.get(trip_advisor_url)
+		time.sleep(randint(4, 7))
+		html = driver.page_source
+		time.sleep(randint(4, 7))
+		soup = BeautifulSoup(html, "lxml")
+
+		last_page = soup.find("a", {"class": "last"}).text
+		time.sleep(1)
+
+		i = 0
+		while i < int(last_page):
+			time.sleep(randint(2, 7))
+
+			try:
+				elem = driver.find_element_by_xpath("//span[contains(@class,'ulBlueLinks')][contains(text(),'More')]")
+				elem.click()
+				print("'MORE' WAS CLICKED")
+			except:
+				print("'More' not clicked!")
+
+			time.sleep(randint(2, 4))
+			html = driver.page_source
+			time.sleep(randint(3, 4))
+			soup = BeautifulSoup(html, "lxml")
+
+			data = soup.find_all("div", {"class": "reviewSelector"})
+		
+			for item in data:
+				# print("TRIPADVISOR")
+				d = item.find("span", {"class": "ratingDate"})["title"]
+				temp_date = ''
+				try:
+					temp_date = datetime.strptime(d, '%B %d, %Y').strftime("%Y%m%d")
+				except:
+					temp_date = datetime.strptime(d, '%d %B %Y').strftime("%Y%m%d")
+				## Store to database ##
+				tour = "Not Specified"
+				if item.find("div", {"class": "review_location_attribution"}):
+					tour = item.find("div", {"class": "review_location_attribution"}).find("a").text
+				date_of_review = int(temp_date)
+				source = "Trip Advisor"
+				reviewer_name = item.find("span", {"class": "thankUser"}).text.replace("Thank ", "")
+				rating = int(item.find("span", {"class": "ui_bubble_rating"}).get("class")[1].replace("bubble_", "")[0])
+				description = item.find("p").text
+				print(description)
+				new_review = Reviews(city=current_city, tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating, description=description, guide='')
+				if len(Reviews.objects.filter(tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating)) == 0:
+					new_review.save()
+					print("SAVED")
+					new_reviews_saved += 1
+				else:
+					print("DONT SAVE")
+					i = int(last_page) + 1
+					break
+				#######################
+			time.sleep(randint(2, 5))
+			if i < int(last_page):
+				next_page = driver.find_element_by_xpath("//div[(@id='REVIEWS')] //a[contains(@class,'next')] [contains(text(),'Next')]")
+				next_page.click()
+				i += 1
+		print("Tripadvisor Scrape Completed")
+	else:
+		print("No URL for Tripadvisor")
+	
 	### Scrape Viator ###
 	if viator_urls != None:
 		print("Initiating Viator Scrape")
@@ -175,6 +246,7 @@ def scrape_sites(city):
 					if len(Reviews.objects.filter(tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating)) == 0:
 						new_review.save()
 						print("SAVED")
+						new_reviews_saved += 1
 					else:
 						print("DONT SAVE")
 						i = int(last_page) + 1
@@ -193,73 +265,7 @@ def scrape_sites(city):
 	else:
 		print("No URL for Viator")
 
-
-	# Scrape TripAdvisor ##
-	if trip_advisor_url != None:
-		print("Initiating Tripadvisor Scrape")
-
-		driver.get(trip_advisor_url)
-		time.sleep(randint(4, 7))
-		html = driver.page_source
-		time.sleep(randint(4, 7))
-		soup = BeautifulSoup(html, "lxml")
-
-		last_page = soup.find("a", {"class": "last"}).text
-		time.sleep(1)
-
-		i = 0
-		while i < int(last_page):
-			time.sleep(randint(2, 7))
-
-			try:
-				elem = driver.find_element_by_xpath("//span[contains(@class,'ulBlueLinks')][contains(text(),'More')]")
-				elem.click()
-				print("'MORE' WAS CLICKED")
-			except:
-				print("'More' not clicked!")
-
-			time.sleep(randint(2, 4))
-			html = driver.page_source
-			time.sleep(randint(3, 4))
-			soup = BeautifulSoup(html, "lxml")
-
-			data = soup.find_all("div", {"class": "reviewSelector"})
-		
-			for item in data:
-				# print("TRIPADVISOR")
-				d = item.find("span", {"class": "ratingDate"})["title"]
-				temp_date = ''
-				try:
-					temp_date = datetime.strptime(d, '%B %d, %Y').strftime("%Y%m%d")
-				except:
-					temp_date = datetime.strptime(d, '%d %B %Y').strftime("%Y%m%d")
-				## Store to database ##
-				tour = "Not Specified"
-				if item.find("div", {"class": "review_location_attribution"}):
-					tour = item.find("div", {"class": "review_location_attribution"}).find("a").text
-				date_of_review = int(temp_date)
-				source = "Trip Advisor"
-				reviewer_name = item.find("span", {"class": "thankUser"}).text.replace("Thank ", "")
-				rating = int(item.find("span", {"class": "ui_bubble_rating"}).get("class")[1].replace("bubble_", "")[0])
-				description = item.find("p").text
-				print(description)
-				new_review = Reviews(city=current_city, tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating, description=description, guide='')
-				if len(Reviews.objects.filter(tour=tour, date_of_review=date_of_review, source=source, reviewer_name=reviewer_name, rating=rating)) == 0:
-					new_review.save()
-					print("SAVED")
-				else:
-					print("DONT SAVE")
-					i = int(last_page) + 1
-					break
-				#######################
-			time.sleep(randint(2, 5))
-			if i < int(last_page):
-				next_page = driver.find_element_by_xpath("//div[(@id='REVIEWS')] //a[contains(@class,'next')] [contains(text(),'Next')]")
-				next_page.click()
-				i += 1
-		print("Tripadvisor Scrape Completed")
-	else:
-		print("No URL for Tripadvisor")
+	print(f"Saved {new_reviews_saved} new reviews to database for {current_city}")
 
 def scraper(request):
 	form = findMyReviewsForm(request.POST or None)
